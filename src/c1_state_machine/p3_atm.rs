@@ -14,6 +14,18 @@ pub enum Key {
     Enter,
 }
 
+impl Key {
+    fn into_u64(self) -> u64 {
+        match self {
+            Key::One => 1,
+            Key::Two => 2,
+            Key::Three => 3,
+            Key::Four => 4,
+            Key::Enter => 10000000,
+        }
+    }
+}
+
 /// Something you can do to the ATM
 pub enum Action {
     /// Swipe your card at the ATM. The attached value is the hash of the pin
@@ -58,7 +70,77 @@ impl StateMachine for Atm {
     type Transition = Action;
 
     fn next_state(starting_state: &Self::State, t: &Self::Transition) -> Self::State {
-        todo!("Exercise 4")
+        match (starting_state.expected_pin_hash.clone(), t) {
+            (Auth::Waiting, Action::SwipeCard(auth_key)) => Atm {
+                cash_inside: starting_state.cash_inside,
+                expected_pin_hash: Auth::Authenticating(*auth_key),
+                keystroke_register: vec![],
+            },
+            (Auth::Waiting, Action::PressKey(_)) => starting_state.clone(),
+            // Restart
+            (Auth::Authenticating(_), Action::SwipeCard(_)) => {
+                starting_state.clone()
+            }
+            // Still entering keys
+            (Auth::Authenticating(_), Action::PressKey(key)) if key != &Key::Enter => {
+                let mut state = starting_state.clone();
+                state.keystroke_register.push(key.clone());
+                state
+            }
+            // Pressed Enter
+            (Auth::Authenticating(auth_key), Action::PressKey(_)) => {
+                // let auth: u64 = starting_state
+                //     .clone()
+                //     .keystroke_register
+                //     .into_iter()
+                //     .fold(0, |base, new| base * 10 + new.into_u64());
+                let auth = crate::hash(&starting_state.keystroke_register);
+
+                let mut state = starting_state.clone();
+                if auth == auth_key {
+                    state.expected_pin_hash = Auth::Authenticated;
+                    state.keystroke_register = vec![]; // clearing the vector to allow for money input
+                    state
+                } else {
+                    state.expected_pin_hash = Auth::Waiting;
+                    state.keystroke_register = vec![]; // clearing the vector to allow for money input
+                    state
+                }
+            }
+            // Restart
+            (Auth::Authenticated, Action::SwipeCard(_)) => {
+                let mut state = starting_state.clone();
+                state.expected_pin_hash = Auth::Waiting;
+                state
+            }
+            // Still entering amount
+            (Auth::Authenticated, Action::PressKey(key)) if *key != Key::Enter => {
+                let mut state = starting_state.clone();
+                state.keystroke_register.push(key.clone());
+                state
+            }
+            // Pressed Enter
+            (Auth::Authenticated, Action::PressKey(_)) => {
+                let withdrawal_amount: u64 = starting_state
+                    .clone()
+                    .keystroke_register
+                    .into_iter()
+                    .fold(0, |base, new| base * 10 + new.into_u64());
+
+                let mut state = starting_state.clone();
+
+                if state.cash_inside >= withdrawal_amount {
+                    state.cash_inside -= withdrawal_amount;
+                    state.expected_pin_hash = Auth::Waiting;
+                    state.keystroke_register = vec![];
+                    state
+                } else {
+                    state.expected_pin_hash = Auth::Waiting;
+                    state.keystroke_register = vec![];
+                    state
+                }
+            }
+        }
     }
 }
 
