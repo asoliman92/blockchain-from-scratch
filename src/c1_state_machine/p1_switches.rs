@@ -43,11 +43,11 @@ impl StateMachine for WeirdSwitchMachine {
 
     fn next_state(starting_state: &TwoSwitches, t: &Toggle) -> TwoSwitches {
         match t {
+            // turning second one off in case first switch turns off
             Toggle::FirstSwitch if starting_state.first_switch => TwoSwitches {
                 first_switch: !starting_state.first_switch,
                 second_switch: false,
             },
-            // turning second one off in case first switch turns off
             Toggle::FirstSwitch => TwoSwitches {
                 first_switch: !starting_state.first_switch,
                 second_switch: starting_state.second_switch,

@@ -89,11 +89,6 @@ impl StateMachine for Atm {
             }
             // Pressed Enter
             (Auth::Authenticating(auth_key), Action::PressKey(_)) => {
-                // let auth: u64 = starting_state
-                //     .clone()
-                //     .keystroke_register
-                //     .into_iter()
-                //     .fold(0, |base, new| base * 10 + new.into_u64());
                 let auth = crate::hash(&starting_state.keystroke_register);
 
                 let mut state = starting_state.clone();
