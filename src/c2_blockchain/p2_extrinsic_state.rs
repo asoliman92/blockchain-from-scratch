@@ -31,12 +31,24 @@ pub struct Header {
 impl Header {
     /// Returns a new valid genesis header.
     fn genesis() -> Self {
-        todo!("Exercise 1")
+        Header {
+            parent: 0,
+            height: 0,
+            extrinsic: 0,
+            state: 0,
+            consensus_digest: (),
+        }
     }
 
     /// Create and return a valid child header.
     fn child(&self, extrinsic: u64) -> Self {
-        todo!("Exercise 2")
+        Header {
+            parent: hash(self),
+            height: self.height + 1,
+            extrinsic: extrinsic,
+            state: self.state + extrinsic,
+            consensus_digest: (),
+        }
     }
 
     /// Verify that all the given headers form a valid chain from this header to the tip.
@@ -48,7 +60,27 @@ impl Header {
     /// So in order for a block to verify, we must have that relationship between the extrinsic,
     /// the previous state, and the current state.
     fn verify_sub_chain(&self, chain: &[Header]) -> bool {
-        todo!("Exercise 3")
+        let mut parent_hash = hash(self);
+        let mut current_height = 1;
+        let mut current_state = 0;
+
+        for current_block in chain.into_iter() {
+            if current_block.parent != parent_hash 
+            || current_block.height != current_height 
+            || current_block.state != current_state + current_block.extrinsic {
+                println!("Failing subchain in Header: {:?}", current_block);
+                println!("parent_hash {:?}", parent_hash);
+                println!("current_height {:?}", current_height);
+                println!("current_state {:?}", current_state);
+                return false;
+            }
+
+            current_height += 1;
+            current_state = current_block.state;
+            parent_hash = hash(&current_block);
+        }
+
+        true
     }
 }
 
@@ -56,7 +88,14 @@ impl Header {
 
 /// Build and return a valid chain with the given number of blocks.
 fn build_valid_chain(n: u64) -> Vec<Header> {
-    todo!("Exercise 4")
+    let mut current_block = Header::genesis();
+    let mut chain = vec![current_block.clone()];
+    for i in 0..n {
+        let child = current_block.child(i);
+        chain.push(child.clone());
+        current_block = child;
+    }
+    chain
 }
 
 /// Build and return a chain with at least three headers.
@@ -70,7 +109,11 @@ fn build_valid_chain(n: u64) -> Vec<Header> {
 /// For this function, ONLY USE the the `genesis()` and `child()` methods to create blocks.
 /// The exercise is still possible.
 fn build_an_invalid_chain() -> Vec<Header> {
-    todo!("Exercise 5")
+    let g = Header::genesis();
+    let b1 = g.child(1);
+    let b2 = b1.child(2);
+    let b3 = b2.child(3);
+    vec![g, b1, b3, b2]
 }
 
 /// Build and return two header chains.
@@ -85,7 +128,20 @@ fn build_an_invalid_chain() -> Vec<Header> {
 ///
 /// Side question: What is the fewest number of headers you could create to achieve this goal.
 fn build_forked_chain() -> (Vec<Header>, Vec<Header>) {
-    todo!("Exercise 6")
+    let g = Header::genesis();
+    let b11 = g.child(1);
+    let intersection = b11.child(2);
+    // first fork
+    let b13 = intersection.child(3);
+    let b14 = b13.child(4);
+    // second fork
+    let b23 = intersection.child(5);
+    let b24 = b23.child(6);
+
+    let chain1 = vec![g.clone(), b11.clone(), intersection.clone(), b13, b14];
+    let chain2 = vec![g, b11, intersection, b23, b24];
+    
+    (chain1, chain2)
 
     // Exercise 7: After you have completed this task, look at how its test is written below.
     // There is a critical thinking question for you there.
